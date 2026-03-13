@@ -1,0 +1,477 @@
+{
+  "title": "LLM Observability - Introduction",
+  "uid": "llm-intro",
+  "tags": [
+    "llm",
+    "erythix",
+    "intro"
+  ],
+  "refresh": "30s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "text",
+      "id": 1,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Observabilité LLM en production\n\nDétecter les dérives silencieuses avant que les utilisateurs ne les signalent."
+      },
+      "title": ""
+    },
+    {
+      "type": "text",
+      "id": 2,
+      "gridPos": {
+        "h": 14,
+        "w": 14,
+        "x": 0,
+        "y": 6
+      },
+      "title": "Architecture du lab",
+      "options": {
+        "mode": "markdown",
+        "content": "## Architecture\n\n```\nload-generator\n      |\n      v\n  llm-app:8000\n  (FastAPI + prometheus_client)\n      |\n      |-- /metrics <-- scrape 5s -- VictoriaMetrics:8428 --> Grafana:3000\n      |\n      |-- OTLP traces --> otel-collector --> Loki:3100\n```\n\nLes métriques passent par un scrape Prometheus natif, pas d'OTLP.\n"
+      }
+    },
+    {
+      "type": "text",
+      "id": 3,
+      "gridPos": {
+        "h": 14,
+        "w": 10,
+        "x": 14,
+        "y": 6
+      },
+      "title": "Scénarios de démonstration",
+      "options": {
+        "mode": "markdown",
+        "content": "## Scénarios\n\n**1. Baseline** - eval ~0.91, TTFT P99 < 0.5s, hallucination < 3%\n\n**2. Concept drift** - mise à jour silencieuse du provider  \neval 0.91 → 0.50, hallucination 2% → 30%, TTFT normal (invisible en infra)  \n`./scripts/demo.sh concept`\n\n**3. Pipeline drift** - chunk_size RAG 500 → 1000 tokens  \nTTFT 0.3s → >3s, RAG score chute  \n`./scripts/demo.sh pipeline`\n\n**4. Prompt injection** - token spike, requête bloquée, annotation Grafana  \n`./scripts/demo.sh inject`\n\n**5. Les 3 simultanément**  \n`./scripts/demo.sh all`\n"
+      }
+    },
+    {
+      "type": "text",
+      "id": 4,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 20
+      },
+      "title": "Métriques instrumentées",
+      "options": {
+        "mode": "markdown",
+        "content": "## Métriques\n\n| Métrique | Type | Détecte |\n|---|---|---|\n| llm_ttft_seconds | Histogram | Pipeline drift |\n| llm_eval_score | Gauge | Concept drift |\n| llm_hallucination_rate | Gauge | Concept drift |\n| llm_input_tokens_total | Counter | Data drift / injection |\n| llm_rag_score | Gauge | Pipeline drift |\n| llm_rag_latency_seconds | Histogram | Pipeline drift |\n| llm_user_satisfaction | Gauge | Impact business |\n| llm_cost_usd_total | Counter | Anomalie coût |\n| llm_drift_active | Gauge | État dérive 0-1 |\n"
+      }
+    },
+    {
+      "type": "text",
+      "id": 5,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 20
+      },
+      "title": "Pourquoi pas juste des logs ?",
+      "options": {
+        "mode": "markdown",
+        "content": "## Pourquoi pas juste des logs ?\n\n**Logs seuls** - un concept drift ne génère aucune erreur. Logs propres, CPU normal. Le RAG répond n'importe quoi depuis 3h.\n\n**Métriques infra seules** - CPU, RAM, réseau tous normaux pendant un pipeline drift. La latence applicative explose, le monitoring infra ne voit rien.\n\n**Métriques LLM-native** - TTFT, eval score, hallucination rate, RAG score. Les dérives deviennent visibles en quelques scrapes.\n"
+      }
+    },
+    {
+      "type": "text",
+      "id": 6,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 20
+      },
+      "title": "Commandes rapides",
+      "options": {
+        "mode": "markdown",
+        "content": "## Commandes\n\n```bash\n# Démarrage\ndocker compose up -d --build\ncurl localhost:8000/metrics | grep llm_\n\n# Démo\n./scripts/demo.sh full\n./scripts/demo.sh concept\n./scripts/demo.sh pipeline\n\n# Dérive manuelle\n./scripts/drift.sh concept 0.8\n./scripts/drift.sh pipeline 0.7\n./scripts/drift.sh reset\n\n# Accès\n# :3000  Grafana (admin/admin)\n# :8000  API /docs\n# :8428  VictoriaMetrics\n```\n"
+      }
+    },
+    {
+      "type": "stat",
+      "id": 11,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 27
+      },
+      "title": "Requetes traitees",
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "sum(llm_requests_total)",
+          "legendFormat": "requetes"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 12,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 27
+      },
+      "title": "Eval Score",
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.6
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_eval_score)",
+          "legendFormat": "eval"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 13,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 27
+      },
+      "title": "Hallucination rate",
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.15
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_hallucination_rate)",
+          "legendFormat": "halluc"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 14,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 27
+      },
+      "title": "TTFT P99",
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.99, rate(llm_ttft_seconds_bucket[2m]))",
+          "legendFormat": "P99"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 15,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 27
+      },
+      "title": "Satisfaction /5",
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 1,
+          "max": 5,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "green",
+                "value": 4
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_user_satisfaction)",
+          "legendFormat": "sat"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 16,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 27
+      },
+      "title": "Derives actives",
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Aucune",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "1 derive",
+                  "color": "orange"
+                },
+                "2": {
+                  "text": "2 derives",
+                  "color": "red"
+                },
+                "3": {
+                  "text": "CRITIQUE",
+                  "color": "dark-red"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "sum(llm_drift_active > 0)",
+          "legendFormat": "derives"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": 20,
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "[Dashboard LLM Observability](/d/llm-obs)"
+      },
+      "title": ""
+    }
+  ]
+}

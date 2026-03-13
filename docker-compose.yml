@@ -1,0 +1,160 @@
+##############################################################################
+# LLM Observability Lab
+#
+# Architecture metriques :
+#   llm-app expose /metrics (prometheus_client natif)
+#   VictoriaMetrics scrape /metrics toutes les 5s - aucun intermediaire
+#
+# Acces :
+#   http://localhost:3000   Grafana (admin/admin)
+#   http://localhost:8000   API FastAPI (/docs, /metrics, /status)
+#   http://localhost:8428   VictoriaMetrics UI
+#   http://localhost:6006   Arize Phoenix (optionnel)
+##############################################################################
+
+services:
+
+  # ── Application LLM ─────────────────────────────────────────────────
+  llm-app:
+    build:
+      context: ./app
+    container_name: llm-app
+    ports:
+      - "8000:8000"
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      GRAFANA_URL: "http://grafana:3000"
+      GRAFANA_USER: "admin"
+      GRAFANA_PASS: "admin"
+    restart: unless-stopped
+    networks:
+      - obs
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
+  # ── VictoriaMetrics - scrape direct /metrics ─────────────────────────
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.105.0
+    container_name: victoriametrics
+    ports:
+      - "8428:8428"
+    volumes:
+      - vm-data:/victoria-metrics-data
+      - ./vm/scrape.yaml:/etc/vm/scrape.yaml:ro
+    command:
+      - "-retentionPeriod=7d"
+      - "-httpListenAddr=:8428"
+      - "-promscrape.config=/etc/vm/scrape.yaml"
+      - "-promscrape.suppressDuplicateScrapeTargetErrors"
+    restart: unless-stopped
+    networks:
+      - obs
+
+  # ── Loki - logs JSON ─────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/tmp/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - obs
+
+  # ── OTel Collector - traces + logs ──────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - obs
+
+  # ── Grafana ──────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_PANELS_DISABLE_SANITIZE_HTML: "true"
+      GF_FEATURE_TOGGLES_ENABLE: "publicDashboards"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/intro.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - victoriametrics
+      - loki
+    restart: unless-stopped
+    networks:
+      - obs
+
+  # ── Arize Phoenix - traces LLM + eval (optionnel) ───────────────────
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      - "6006:6006"
+      - "6007:6007"
+    environment:
+      PHOENIX_WORKING_DIR: /phoenix
+      PHOENIX_PORT: "6006"
+      PHOENIX_GRPC_PORT: "6007"
+    volumes:
+      - phoenix-data:/phoenix
+    restart: unless-stopped
+    networks:
+      - obs
+    profiles:
+      - phoenix
+
+  # ── Generateur de charge externe - continu ──────────────────────────
+  load-generator:
+    image: alpine/curl:latest
+    container_name: load-generator
+    volumes:
+      - ./scripts:/scripts:ro
+    # Retry loop : attend que l'app reponde avant de demarrer
+    command: >
+      sh -c "
+        echo 'Attente llm-app...';
+        until curl -sf http://llm-app:8000/health > /dev/null 2>&1; do sleep 2; done;
+        echo 'llm-app pret, demarrage du generateur';
+        sh /scripts/load.sh
+      "
+    depends_on:
+      - llm-app
+    restart: unless-stopped
+    networks:
+      - obs
+
+networks:
+  obs:
+    name: llm-obs
+    driver: bridge
+
+volumes:
+  vm-data:
+  loki-data:
+  grafana-data:
+  phoenix-data:

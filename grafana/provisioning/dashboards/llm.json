@@ -1,0 +1,1709 @@
+{
+  "title": "LLM Observability",
+  "uid": "llm-obs",
+  "description": " - Observabilite LLM en production",
+  "tags": [
+    "llm",
+    "erythix"
+  ],
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "model",
+        "type": "query",
+        "datasource": {
+          "uid": "vm"
+        },
+        "definition": "label_values(llm_requests_total, model)",
+        "query": "label_values(llm_requests_total, model)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "label": "Modele",
+        "hide": 0,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "id": 1,
+      "title": "Sante en temps reel",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "id": 8,
+      "title": "Sessions actives",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "teal"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "llm_active_sessions",
+          "legendFormat": "sessions"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "TTFT P99",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.99, rate(llm_ttft_seconds_bucket[2m]))",
+          "legendFormat": "P99"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "Eval Score",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.6
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_eval_score)",
+          "legendFormat": "Eval"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 9,
+      "title": "Taux hallucination",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.15
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_hallucination_rate)",
+          "legendFormat": "halluc"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 10,
+      "title": "Satisfaction /5",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 1,
+          "max": 5,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "green",
+                "value": 4
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_user_satisfaction)",
+          "legendFormat": "sat"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 7,
+      "title": "Total requetes",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "sum(llm_requests_total)",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 100,
+      "title": "TTFT et Latence - Pipeline Drift",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "collapsed": false
+    },
+    {
+      "type": "heatmap",
+      "id": 11,
+      "title": "Heatmap TTFT - outliers invisibles dans la moyenne",
+      "description": "Un P99 eleve pendant que la moyenne est stable = pipeline drift",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "calculate": false,
+        "color": {
+          "scheme": "Oranges",
+          "mode": "scheme",
+          "steps": 64
+        },
+        "yAxis": {
+          "unit": "s",
+          "decimals": 2
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "scheme",
+            "colorScheme": "Oranges"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "sum by (le) (rate(llm_ttft_seconds_bucket[1m]))",
+          "legendFormat": "{{le}}",
+          "format": "heatmap"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 12,
+      "title": "TTFT P50 / P95 / P99 par modele",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "P99.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "P50.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le,model) (rate(llm_ttft_seconds_bucket[2m])))",
+          "legendFormat": "P50 - {{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le,model) (rate(llm_ttft_seconds_bucket[2m])))",
+          "legendFormat": "P95 - {{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le,model) (rate(llm_ttft_seconds_bucket[2m])))",
+          "legendFormat": "P99 - {{model}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 20,
+      "title": "Tokens et Data Drift",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 21,
+      "title": "Tokens input par modele - hausse = Data Drift ou injection",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "rate(llm_input_tokens_total[1m]) * 60",
+          "legendFormat": "input tok/min - {{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "rate(llm_output_tokens_total[1m]) * 60",
+          "legendFormat": "output tok/min - {{model}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 22,
+      "title": "Cout USD par modele - spike = injection ou data drift",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "rate(llm_cost_usd_total[2m]) * 60",
+          "legendFormat": "cout/sec - {{model}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 30,
+      "title": "Eval Score et Concept Drift",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 31,
+      "title": "Eval Score par modele - chute = Concept Drift",
+      "description": "Alerte si eval < 0.7 sur 1h - concept drift ou mise a jour silencieuse du provider",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 23
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "min"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.6
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Seuil critique"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    8
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "llm_eval_score",
+          "legendFormat": "Eval - {{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "vector(0.7)",
+          "legendFormat": "Seuil critique"
+        }
+      ]
+    },
+    {
+      "type": "gauge",
+      "id": 32,
+      "title": "Eval Score actuel",
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 16,
+        "y": 23
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "minVizWidth": 75,
+        "minVizHeight": 75
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.6
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_eval_score)",
+          "legendFormat": "Score moyen"
+        }
+      ]
+    },
+    {
+      "type": "state-timeline",
+      "id": 33,
+      "title": "Derives actives",
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 23
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "mergeValues": false,
+        "showValue": "never",
+        "alignValue": "center",
+        "rowHeight": 0.9,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 70
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "llm_drift_active",
+          "legendFormat": "{{drift_type}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 40,
+      "title": "RAG et Qualite Retrieval",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 41,
+      "title": "Score retrieval RAG - chute = pipeline drift (chunking altere)",
+      "description": "Cas reel : reranking prenait 6s sur 8s totaux. Invisible dans les metriques infra.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 41
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "min"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Seuil alerte"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    6
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "llm_rag_score",
+          "legendFormat": "RAG score - {{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "vector(0.6)",
+          "legendFormat": "Seuil alerte"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 42,
+      "title": "Latence RAG P50 / P99 - spike = pipeline drift",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 41
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*P99.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*P50.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.50, rate(llm_rag_latency_seconds_bucket[2m]))",
+          "legendFormat": "RAG P50"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.99, rate(llm_rag_latency_seconds_bucket[2m]))",
+          "legendFormat": "RAG P99"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 50,
+      "title": "Alertes - Regles de Derive",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "id": 51,
+      "title": "TTFT P99 > 3s",
+      "description": "Pipeline drift - scale ou fallback modele leger",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 49
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "OK",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "CRITIQUE",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "histogram_quantile(0.99, rate(llm_ttft_seconds_bucket[2m])) > bool 3"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 52,
+      "title": "Eval Score < 0.7",
+      "description": "Concept drift - relancer revue qualite et golden dataset",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 49
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "OK",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "WARNING",
+                  "color": "orange"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_eval_score) < bool 0.7"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 53,
+      "title": "RAG Score < 0.6",
+      "description": "Pipeline drift - verifier chunking RAG et reranker",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 49
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "OK",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "WARNING",
+                  "color": "orange"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "avg(llm_rag_score) < bool 0.6"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 54,
+      "title": "Erreurs > 5%",
+      "description": "Pipeline drift - rollback prompt template",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 49
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "OK",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "CRITIQUE",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "(rate(llm_errors_total[2m]) / (rate(llm_requests_total[2m]) + 0.001)) > bool 0.05"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 60,
+      "title": "Erreurs et Distribution",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 61,
+      "title": "Erreurs par type",
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 54
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "rate(llm_errors_total[2m]) * 60",
+          "legendFormat": "{{error_type}} - {{model}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 62,
+      "title": "Longueur moyenne des prompts - Data Drift si hausse",
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 54
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "rate(llm_prompt_chars_sum[2m]) / rate(llm_prompt_chars_count[2m])",
+          "legendFormat": "longueur moy - {{model}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 69,
+      "title": "Impact Business - Hallucinations et Satisfaction",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 70,
+      "title": "Taux d hallucination par modele - indicateur Concept Drift",
+      "description": "Hausse = le modele commence a inventer. Invisible dans les logs, visible ici.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 31
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.15
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Seuil alerte"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    8
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "llm_hallucination_rate",
+          "legendFormat": "{{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "vector(0.1)",
+          "legendFormat": "Seuil alerte"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 71,
+      "title": "Satisfaction utilisateur /5 - impact business des derives",
+      "description": "Derive les derives au langage business : hallucinations + TTFT eleve = satisfaction en chute.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 31
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "min",
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 1,
+          "max": 5,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "green",
+                "value": 4
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "llm_user_satisfaction",
+          "legendFormat": "satisfaction - {{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "vector(3.5)",
+          "legendFormat": "Seuil acceptable"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 80,
+      "title": "Cout par unite de qualite - ROI en temps reel",
+      "description": "USD depense pour obtenir UNE reponse correcte. Quand le concept drift s active, vous payez autant pour des hallucinations. Ce chiffre parle aux decideurs.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 60
+      },
+      "datasource": {
+        "uid": "vm"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.005
+              },
+              {
+                "color": "red",
+                "value": 0.02
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Seuil ROI"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    8
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "llm_cost_per_quality",
+          "legendFormat": "cout/qualite - {{model}}"
+        },
+        {
+          "datasource": {
+            "uid": "vm"
+          },
+          "expr": "vector(0.01)",
+          "legendFormat": "seuil x10 baseline"
+        }
+      ]
+    }
+  ]
+}
